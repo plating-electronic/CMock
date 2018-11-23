@@ -1,0 +1,108 @@
+#      ___  ___
+#     / / \/ / \
+#    / /  / /__/
+#   / /__/___/
+#  /_/ plating
+# electronic
+#
+# Authors:     Lars Moellendorf <lars.moellendorf@plating.de>
+#              Adrian Antonana <adrian.antonana@plating.de>
+# Description: CMock convenience functions
+#
+
+#-----------------------------------------------------------------------------
+# Find dependencies
+#-----------------------------------------------------------------------------
+find_package(Ruby REQUIRED)
+
+find_program(C_PREPROCESSOR cpp)
+
+set(CMOCK_CREATE_RUNNER_COMMAND
+    UNITY_DIR=${@PROJECT_NAME@_INSTALL_DIR}/vendor/unity
+    ${RUBY_EXECUTABLE} ${@PROJECT_NAME@_INSTALL_DIR}/scripts/create_runner.rb
+)
+
+#-----------------------------------------------------------------------------
+# create cmock mock command
+#-----------------------------------------------------------------------------
+function( cmock_command DEPENDENCY HEADER_FILE )
+
+    set(CMOCK_COMMAND
+        ${RUBY_EXECUTABLE} ${@PROJECT_NAME@_INSTALL_DIR}/lib/cmock.rb
+        -o${CMAKE_CURRENT_SOURCE_DIR}/cmock-config.yml
+    )
+
+    string(REGEX REPLACE "^.+::" "" NAMESPACELESS_DEPENDENCY ${DEPENDENCY})
+    # Create directory for mocks
+    set(MOCK_DIR ${CMAKE_CURRENT_BINARY_DIR}/mocks)
+    file(MAKE_DIRECTORY ${MOCK_DIR})
+    # Define command
+    get_filename_component(HEADER_FILE_NAME_WE ${HEADER_FILE} NAME_WE)
+    get_filename_component(HEADER_FILE_NAME ${HEADER_FILE} NAME)
+    set(MOCK_OBJECT_NAME ${MOCK_DIR}/mock_${HEADER_FILE_NAME_WE})
+    #set(PP_HEADER_FILE ${HEADER_FILE_NAME_WE}.pp)
+
+    #    add_custom_command(OUTPUT
+    #	${PP_HEADER_FILE}
+    #	COMMAND cpp -o ${PP_HEADER_FILE} ${HEADER_FILE}
+    #	DEPENDS ${DEPENDENCY}
+    #        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    #	)
+
+    add_custom_command(OUTPUT
+        ${MOCK_OBJECT_NAME}.c
+        ${MOCK_OBJECT_NAME}.h
+        COMMAND ${C_PREPROCESSOR} -o ${HEADER_FILE_NAME_WE} ${HEADER_FILE}
+        COMMAND ${CMOCK_COMMAND} ${HEADER_FILE_NAME_WE}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "[CMOCK][${HEADER_FILE_NAME}] Generating mock ${NAMESPACELESS_DEPENDENCY}mock"
+    )
+
+    set(MOCK_MODULE "${NAMESPACELESS_DEPENDENCY}mock")
+    message(STATUS "${MOCK_MODULE} will be generated using: \n${CMOCK_COMMAND} ${PP_HEADER_FILE}\nits files are: \n${MOCK_OBJECT_NAME}.c/h")
+    message(STATUS "mock command 1: ${C_PREPROCESSOR} -o ${HEADER_FILE_NAME_WE} ${HEADER_FILE}")
+    message(STATUS "mock command 2: ${CMOCK_COMMAND} ${HEADER_FILE_NAME_WE}")
+    message(STATUS "cmock command CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
+    message(STATUS "cmock command CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
+
+    add_library(${MOCK_MODULE}
+        ${MOCK_OBJECT_NAME}
+    )
+    set_property(TARGET ${MOCK_MODULE} PROPERTY C_STANDARD 99)
+    target_link_libraries (${MOCK_MODULE} ${DEPENDENCY}
+        unity::unity
+        unity::cmock
+    )
+    target_include_directories (${MOCK_MODULE} PUBLIC
+        ${MOCK_DIR}
+    )
+
+    include_directories(${DEPENDENCY}mock ${MOCK_DIR})
+endfunction()
+
+#-----------------------------------------------------------------------------
+# create cmock runner command
+#-----------------------------------------------------------------------------
+function(cmock_create_runner TEST_SOURCE_FILE)
+    get_filename_component(TEST_SOURCE_FILE_NAME_WE ${TEST_SOURCE_FILE} NAME_WE)
+    get_filename_component(TEST_SOURCE_FILE_NAME ${TEST_SOURCE_FILE} NAME)
+
+    set(GENERATED_RUNNER_FILE
+        ${TEST_SOURCE_FILE_NAME_WE}_runner.c
+    )
+
+    string(TOUPPER ${TEST_SOURCE_FILE_NAME_WE}_RUNNER GENERATED_RUNNER_FILE_UPPERCASE)
+
+    set(${GENERATED_RUNNER_FILE_UPPERCASE}
+        ${GENERATED_RUNNER_FILE}
+        PARENT_SCOPE
+    )
+
+    add_custom_command(
+        OUTPUT  ${GENERATED_RUNNER_FILE}
+        COMMAND ${CMOCK_CREATE_RUNNER_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SOURCE_FILE} ${GENERATED_RUNNER_FILE}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        BYPRODUCTS ${GENERATED_RUNNER_FILE}
+        COMMENT "[CMOCK][${TEST_SOURCE_FILE_NAME}] Generating runner sources ${GENERATED_RUNNER_FILE}"
+    )
+endfunction()
