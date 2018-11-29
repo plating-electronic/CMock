@@ -14,7 +14,6 @@
 # Find dependencies
 #-----------------------------------------------------------------------------
 find_package(Ruby REQUIRED)
-
 find_program(C_PREPROCESSOR cpp)
 
 set(CMOCK_CREATE_RUNNER_COMMAND
@@ -23,86 +22,199 @@ set(CMOCK_CREATE_RUNNER_COMMAND
 )
 
 #-----------------------------------------------------------------------------
+# helper functions
+#-----------------------------------------------------------------------------
+function(find_header HEADER_FILE INCLUDE_DIRECTORIES_LIST)
+
+    foreach(INC_DIR IN LISTS INCLUDE_DIRECTORIES_LIST)
+        message(STATUS "Processing include directory: ${INC_DIR}")
+
+        set(HEADER_FILE_FULL_PATH_LOC "HEADER_FILE_FULL_PATH_LOC-NOTFOUND")
+
+        string(REGEX REPLACE
+            "^\\$<.+_INTERFACE:(.+)>$"
+            "\\1"
+            INC_DIR_STRIPPED
+            ${INC_DIR}
+        )
+
+        message(STATUS "Looking for ${HEADER_FILE} in ${INC_DIR_STRIPPED}")
+
+        find_file(HEADER_FILE_FULL_PATH_LOC ${HEADER_FILE}
+            PATHS ${INC_DIR_STRIPPED}
+            NO_DEFAULT_PATH
+        )
+
+        string(COMPARE NOTEQUAL "HEADER_FILE_FULL_PATH_LOC-NOTFOUND" ${HEADER_FILE_FULL_PATH_LOC} HEADER_FOUND_LOC)
+
+        if(HEADER_FOUND_LOC)
+            message(STATUS "Found file: ${HEADER_FILE_FULL_PATH_LOC}")
+            break()
+        endif()
+
+    endforeach()
+
+    set(CMOCK_HEADER_FILE_FULL_PATH ${HEADER_FILE_FULL_PATH_LOC} PARENT_SCOPE)
+    set(CMOCK_HEADER_FOUND ${HEADER_FOUND_LOC} PARENT_SCOPE)
+
+endfunction()
+
+# color definitions
+string(ASCII 27 ESC_CHAR)
+set(COLOR_RESET "${ESC_CHAR}[m")
+set(COLOR_YELLOW "${ESC_CHAR}[1;33m")
+
+# print a debug message in yellow
+function(dbgmessage)
+    message("${COLOR_YELLOW}[CMock] ${ARGV}${COLOR_RESET}")
+endfunction()
+
+#-----------------------------------------------------------------------------
 # create cmock mock command
 #-----------------------------------------------------------------------------
-function( cmock_command DEPENDENCY HEADER_FILE )
+function(cmock_create_mock)
+
+    cmake_parse_arguments(
+        "PARSED_ARGS"
+        "VERBOSE"
+        "DEPENDENCY;HEADER"
+        ""
+        ${ARGN}
+    )
+
+    if(NOT PARSED_ARGS_DEPENDENCY)
+        message(FATAL_ERROR "You must provide a DEPENDENCY target")
+    elseif(NOT PARSED_ARGS_HEADER)
+        message(FATAL_ERROR "You must provide a HEADER file")
+    endif()
+
+    if(PARSED_ARGS_VERBOSE)
+        dbgmessage("cmock_create_mock call parameters:")
+        dbgmessage("    VERBOSE:    ${PARSED_ARGS_VERBOSE}")
+        dbgmessage("    DEPENDENCY: ${PARSED_ARGS_DEPENDENCY}")
+        dbgmessage("    HEADER:     ${PARSED_ARGS_HEADER}")
+    endif()
+
+    get_target_property(INCLUDE_DIRS_LIST ${PARSED_ARGS_DEPENDENCY} INCLUDE_DIRECTORIES)
+
+    # find the header file's full path
+    find_header(${PARSED_ARGS_HEADER} ${INCLUDE_DIRS_LIST})
+
+    if(NOT CMOCK_HEADER_FOUND)
+        message(FATAL_ERROR "Failed to find header file: ${PARSED_ARGS_HEADER}")
+    endif()
+
+    # Create directory for mocks
+    set(MOCK_DIR ${CMAKE_CURRENT_BINARY_DIR}/mocks)
+    file(MAKE_DIRECTORY ${MOCK_DIR})
+
+    # Define command
+    string(REGEX REPLACE "^.+::" "" NAMESPACELESS_DEPENDENCY ${PARSED_ARGS_DEPENDENCY})
+    get_filename_component(HEADER_FILE_DIR ${CMOCK_HEADER_FILE_FULL_PATH} DIRECTORY)
+    get_filename_component(HEADER_FILE_NAME_WE ${CMOCK_HEADER_FILE_FULL_PATH} NAME_WE)
+    get_filename_component(HEADER_FILE_NAME ${CMOCK_HEADER_FILE_FULL_PATH} NAME)
+    set(MOCK_OBJECT_NAME ${MOCK_DIR}/mock_${HEADER_FILE_NAME_WE})
 
     set(CMOCK_COMMAND
         ${RUBY_EXECUTABLE} ${@PROJECT_NAME@_INSTALL_DIR}/lib/cmock.rb
         -o${CMAKE_CURRENT_SOURCE_DIR}/cmock-config.yml
     )
 
-    string(REGEX REPLACE "^.+::" "" NAMESPACELESS_DEPENDENCY ${DEPENDENCY})
-    # Create directory for mocks
-    set(MOCK_DIR ${CMAKE_CURRENT_BINARY_DIR}/mocks)
-    file(MAKE_DIRECTORY ${MOCK_DIR})
-    # Define command
-    get_filename_component(HEADER_FILE_NAME_WE ${HEADER_FILE} NAME_WE)
-    get_filename_component(HEADER_FILE_NAME ${HEADER_FILE} NAME)
-    set(MOCK_OBJECT_NAME ${MOCK_DIR}/mock_${HEADER_FILE_NAME_WE})
-    #set(PP_HEADER_FILE ${HEADER_FILE_NAME_WE}.pp)
-
-    #    add_custom_command(OUTPUT
-    #	${PP_HEADER_FILE}
-    #	COMMAND cpp -o ${PP_HEADER_FILE} ${HEADER_FILE}
-    #	DEPENDS ${DEPENDENCY}
-    #        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    #	)
-
     add_custom_command(OUTPUT
         ${MOCK_OBJECT_NAME}.c
         ${MOCK_OBJECT_NAME}.h
-        COMMAND ${C_PREPROCESSOR} -o ${HEADER_FILE_NAME_WE} ${HEADER_FILE}
+        COMMAND ${C_PREPROCESSOR} -o ${HEADER_FILE_NAME_WE} ${CMOCK_HEADER_FILE_FULL_PATH}
         COMMAND ${CMOCK_COMMAND} ${HEADER_FILE_NAME_WE}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "[CMOCK][${HEADER_FILE_NAME}] Generating mock ${NAMESPACELESS_DEPENDENCY}mock"
     )
 
     set(MOCK_MODULE "${NAMESPACELESS_DEPENDENCY}mock")
-    message(STATUS "${MOCK_MODULE} will be generated using: \n${CMOCK_COMMAND} ${PP_HEADER_FILE}\nits files are: \n${MOCK_OBJECT_NAME}.c/h")
-    message(STATUS "mock command 1: ${C_PREPROCESSOR} -o ${HEADER_FILE_NAME_WE} ${HEADER_FILE}")
-    message(STATUS "mock command 2: ${CMOCK_COMMAND} ${HEADER_FILE_NAME_WE}")
-    message(STATUS "cmock command CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
-    message(STATUS "cmock command CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
+
+    if(PARSED_ARGS_VERBOSE)
+        dbgmessage("${MOCK_MODULE} will be generated using: \n${CMOCK_COMMAND} ${PP_HEADER_FILE}\nits files are: \n${MOCK_OBJECT_NAME}.c/h")
+        dbgmessage("mock command 1: ${C_PREPROCESSOR} -o ${HEADER_FILE_NAME_WE} ${CMOCK_HEADER_FILE_FULL_PATH}")
+        dbgmessage("mock command 2: ${CMOCK_COMMAND} ${HEADER_FILE_NAME_WE}")
+        dbgmessage("cmock command CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
+        dbgmessage("cmock command CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
+    endif()
 
     add_library(${MOCK_MODULE}
         ${MOCK_OBJECT_NAME}
     )
+
     set_property(TARGET ${MOCK_MODULE} PROPERTY C_STANDARD 99)
-    target_link_libraries (${MOCK_MODULE} ${DEPENDENCY}
+
+    target_link_libraries (${MOCK_MODULE} ${PARSED_ARGS_DEPENDENCY}
         unity::unity
         unity::cmock
     )
+
     target_include_directories (${MOCK_MODULE} PUBLIC
         ${MOCK_DIR}
+        ${HEADER_FILE_DIR}
     )
-
-    include_directories(${DEPENDENCY}mock ${MOCK_DIR})
 endfunction()
 
 #-----------------------------------------------------------------------------
 # create cmock runner command
 #-----------------------------------------------------------------------------
-function(cmock_create_runner TEST_SOURCE_FILE)
-    get_filename_component(TEST_SOURCE_FILE_NAME_WE ${TEST_SOURCE_FILE} NAME_WE)
-    get_filename_component(TEST_SOURCE_FILE_NAME ${TEST_SOURCE_FILE} NAME)
+function(cmock_create_runner)
+
+    cmake_parse_arguments(
+        "PARSED_ARGS"
+        "VERBOSE"
+        "TARGET;SOURCE"
+        "LIB_DEPS"
+        ${ARGN}
+    )
+
+    if(NOT PARSED_ARGS_TARGET)
+        message(FATAL_ERROR "You must provide a TARGET name")
+    elseif(NOT PARSED_ARGS_SOURCE)
+        message(FATAL_ERROR "You must provide a SOURCE file")
+    endif()
+
+    if(PARSED_ARGS_VERBOSE)
+        dbgmessage("cmock_create_runner call parameters:")
+        dbgmessage("    VERBOSE:  ${PARSED_ARGS_VERBOSE}")
+        dbgmessage("    TARGET:   ${PARSED_ARGS_TARGET}")
+        dbgmessage("    SOURCE:   ${PARSED_ARGS_SOURCE}")
+        dbgmessage("    LIB_DEPS: ${PARSED_ARGS_LIB_DEPS}")
+    endif()
+
+    get_filename_component(TEST_SOURCE_FILE_NAME_WE ${PARSED_ARGS_SOURCE} NAME_WE)
+    get_filename_component(TEST_SOURCE_FILE_NAME ${PARSED_ARGS_SOURCE} NAME)
 
     set(GENERATED_RUNNER_FILE
         ${TEST_SOURCE_FILE_NAME_WE}_runner.c
     )
 
-    string(TOUPPER ${TEST_SOURCE_FILE_NAME_WE}_RUNNER GENERATED_RUNNER_FILE_UPPERCASE)
-
-    set(${GENERATED_RUNNER_FILE_UPPERCASE}
-        ${GENERATED_RUNNER_FILE}
-        PARENT_SCOPE
-    )
-
     add_custom_command(
         OUTPUT  ${GENERATED_RUNNER_FILE}
-        COMMAND ${CMOCK_CREATE_RUNNER_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SOURCE_FILE} ${GENERATED_RUNNER_FILE}
+        COMMAND ${CMOCK_CREATE_RUNNER_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/${PARSED_ARGS_SOURCE} ${GENERATED_RUNNER_FILE}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         BYPRODUCTS ${GENERATED_RUNNER_FILE}
         COMMENT "[CMOCK][${TEST_SOURCE_FILE_NAME}] Generating runner sources ${GENERATED_RUNNER_FILE}"
     )
+
+    add_executable(${PARSED_ARGS_TARGET}
+        ${PARSED_ARGS_SOURCE}
+        ${GENERATED_RUNNER_FILE}
+    )
+
+    target_link_libraries(${PARSED_ARGS_TARGET} PRIVATE
+        ${PARSED_ARGS_LIB_DEPS}
+        unity::unity
+        unity::cmock
+    )
+
+    if(PARSED_ARGS_VERBOSE)
+        dbgmessage("cmock_create_runner command:")
+        dbgmessage("    OUTPUT : ${GENERATED_RUNNER_FILE}")
+        dbgmessage("    COMMAND : ${CMOCK_CREATE_RUNNER_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/${PARSED_ARGS_SOURCE} ${GENERATED_RUNNER_FILE}")
+        dbgmessage("    WORKING_DIRECTORY : ${CMAKE_CURRENT_BINARY_DIR}")
+        dbgmessage("    BYPRODUCTS : ${GENERATED_RUNNER_FILE}:")
+    endif()
+
 endfunction()
