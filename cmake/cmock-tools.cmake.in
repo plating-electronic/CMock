@@ -13,8 +13,15 @@
 #-----------------------------------------------------------------------------
 # Find dependencies
 #-----------------------------------------------------------------------------
-find_package(Ruby REQUIRED)
 find_program(C_PREPROCESSOR cpp)
+
+if(C_PREPROCESSOR)
+    message(STATUS "Found CPP: ${C_PREPROCESSOR}")
+else()
+    message(FATAL_ERROR "CPP not found")
+endif()
+
+find_package(Ruby REQUIRED)
 
 set(CMOCK_CREATE_RUNNER_COMMAND
     UNITY_DIR=${@PROJECT_NAME@_INSTALL_DIR}/vendor/unity
