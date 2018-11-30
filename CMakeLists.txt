@@ -159,4 +159,4 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${CMOCK_TOOLS_FILE}
 )
 
 # add to CMake registry
-export(PACKAGE ${PROJECT_NAME})
+# export(PACKAGE ${PROJECT_NAME})
