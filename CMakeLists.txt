@@ -86,11 +86,17 @@ write_basic_package_version_file(
     COMPATIBILITY SameMajorVersion
 )
 
-configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_CONFIG_FILE}.in ${PROJECT_CONFIG_FILE}
-# configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_CONFIG_FILE}.in
+configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_CONFIG_FILE}.in
+    ${CMAKE_CURRENT_BINARY_DIR}/install-${PROJECT_CONFIG_FILE}
     INSTALL_DESTINATION ${CONFIG_INSTALL_DIR}
-    INSTALL_PREFIX ${CMAKE_PREFIX_PATH}
     PATH_VARS CONFIG_INSTALL_DIR CMOCK_INSTALL_DIR
+    INSTALL_PREFIX ${CMAKE_BINARY_DIR}
+)
+
+# generate a package configuration just for build tree export
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/build-tree-${PROJECT_CONFIG_FILE}.in
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_CONFIG_FILE}
+    @ONLY
 )
 
 # configure cmock tools module
@@ -149,8 +155,9 @@ install(EXPORT ${TARGETS_EXPORT_NAME}
 )
 
 # install package config
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_CONFIG_FILE}
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/install-${PROJECT_CONFIG_FILE}
         DESTINATION ${CONFIG_INSTALL_DIR}
+        RENAME ${PROJECT_CONFIG_FILE}
 )
 
 # install tools module
@@ -159,4 +166,4 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${CMOCK_TOOLS_FILE}
 )
 
 # add to CMake registry
-# export(PACKAGE ${PROJECT_NAME})
+export(PACKAGE ${PROJECT_NAME})
