@@ -30,6 +30,10 @@ add_library(${TARGET_UNITY_NAME}
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src/unity.c
 )
 
+if(NOT TARGET unity::${TARGET_UNITY_NAME})
+    add_library(unity::${TARGET_UNITY_NAME} ALIAS ${TARGET_UNITY_NAME})
+endif()
+
 target_include_directories(${TARGET_UNITY_NAME} PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>
@@ -51,6 +55,11 @@ list(APPEND HEADER_FILES
 # Target cmock
 #-----------------------------------------------------------------------------
 add_library(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/src/cmock.c)
+
+if(NOT TARGET unity::${PROJECT_NAME})
+    add_library(unity::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+endif()
+
 
 target_link_libraries(${PROJECT_NAME} ${TARGET_UNITY_NAME})
 
