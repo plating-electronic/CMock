@@ -9,6 +9,13 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 #-----------------------------------------------------------------------------
+# Options
+#-----------------------------------------------------------------------------
+# When cross compiling CMake tools are only needed on the host
+option(INSTALL_CMAKE_TOOLS "Install CMock CMake functions" ON)
+
+
+#-----------------------------------------------------------------------------
 # Compiler flags
 #-----------------------------------------------------------------------------
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -pedantic -Wextra")
@@ -50,7 +57,7 @@ list(APPEND HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src/unity_internals.h
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src/unity_config.h
 )
-    
+
 #-----------------------------------------------------------------------------
 # Target cmock
 #-----------------------------------------------------------------------------
@@ -108,10 +115,12 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/build-tree-${PROJECT_CONFIG_FIL
     @ONLY
 )
 
-# configure cmock tools module
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${CMOCK_TOOLS_FILE}.in ${CMOCK_TOOLS_FILE}
-  @ONLY
-)
+if(INSTALL_CMAKE_TOOLS)
+	# configure cmock tools module
+	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${CMOCK_TOOLS_FILE}.in ${CMOCK_TOOLS_FILE}
+	  @ONLY
+	)
+endif()
 
 # install targets
 install(TARGETS ${TARGET_UNITY_NAME} ${PROJECT_NAME}
@@ -169,10 +178,12 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/install-${PROJECT_CONFIG_FILE}
         RENAME ${PROJECT_CONFIG_FILE}
 )
 
-# install tools module
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${CMOCK_TOOLS_FILE}
-        DESTINATION ${CONFIG_INSTALL_DIR}
-)
+if(INSTALL_CMAKE_TOOLS)
+	# install tools module
+	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${CMOCK_TOOLS_FILE}
+	        DESTINATION ${CONFIG_INSTALL_DIR}
+	)
+endif()
 
 # add to CMake registry
 export(PACKAGE ${PROJECT_NAME})
