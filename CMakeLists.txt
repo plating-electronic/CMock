@@ -37,7 +37,7 @@ set(UNITY_DOUBLE UNITY_INCLUDE_DOUBLE)
 set(UNITY_EXCLUDE_FLOAT_PRINT UNITY_INCLUDE_FLOAT_PRINT)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/unity_config.h.in
-    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src/unity_config.h @ONLY
+    ${CMAKE_CURRENT_BINARY_DIR}/vendor/unity/src/unity_config.h @ONLY
 )
 
 set(TARGET_UNITY_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src/unity.c)
@@ -57,6 +57,7 @@ foreach(TARGET_NAME ${TARGET_UNITY_NAMES})
 
     target_include_directories(${TARGET_NAME} PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src>
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/vendor/unity/src>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>
     )
 
@@ -70,7 +71,7 @@ endforeach()
 list(APPEND HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src/unity.h
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src/unity_internals.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src/unity_config.h
+    ${CMAKE_CURRENT_BINARY_DIR}/vendor/unity/src/unity_config.h
 )
 
 #-----------------------------------------------------------------------------
