@@ -7,12 +7,17 @@ project(cmock VERSION 2.4.6)
 #-----------------------------------------------------------------------------
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+include(CMakeDependentOption)
 
 #-----------------------------------------------------------------------------
 # Options
 #-----------------------------------------------------------------------------
 # When cross compiling CMake tools are only needed on the host
 option(INSTALL_CMAKE_TOOLS "Install CMock CMake functions" ON)
+# For packaging by tools like bitbake, shared and static libs should be build
+# at once
+CMAKE_DEPENDENT_OPTION(BUILD_STATIC_LIBS "Build static libs" OFF
+	"BUILD_SHARED_LIBS" OFF)
 
 
 #-----------------------------------------------------------------------------
@@ -25,6 +30,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra")
 # Target unity
 #-----------------------------------------------------------------------------
 set(TARGET_UNITY_NAME unity)
+set(TARGET_UNITY_NAMES ${TARGET_UNITY_NAME})
+
 set(UNITY_FLOAT UNITY_INCLUDE_FLOAT)
 set(UNITY_DOUBLE UNITY_INCLUDE_DOUBLE)
 set(UNITY_EXCLUDE_FLOAT_PRINT UNITY_INCLUDE_FLOAT_PRINT)
@@ -33,24 +40,32 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/unity_config.h.in
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src/unity_config.h @ONLY
 )
 
-add_library(${TARGET_UNITY_NAME}
-    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src/unity.c
-)
+set(TARGET_UNITY_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src/unity.c)
+add_library(${TARGET_UNITY_NAME} ${TARGET_UNITY_SOURCES})
 
-if(NOT TARGET unity::${TARGET_UNITY_NAME})
-    add_library(unity::${TARGET_UNITY_NAME} ALIAS ${TARGET_UNITY_NAME})
+if(BUILD_SHARED_LIBS AND BUILD_STATIC_LIBS)
+    add_library(${TARGET_UNITY_NAME}_static STATIC ${TARGET_UNITY_SOURCES})
+    set_target_properties(${TARGET_UNITY_NAME}_static PROPERTIES
+        POSITION_INDEPENDENT_CODE FALSE)
+    list(APPEND TARGET_UNITY_NAMES ${TARGET_UNITY_NAME}_static)
 endif()
 
-target_include_directories(${TARGET_UNITY_NAME} PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>
-)
+foreach(TARGET_NAME ${TARGET_UNITY_NAMES})
+    if(NOT TARGET unity::${TARGET_NAME})
+        add_library(unity::${TARGET_NAME} ALIAS ${TARGET_NAME})
+    endif()
 
-set_target_properties(${TARGET_UNITY_NAME} PROPERTIES C_STANDARD 99)
-set_target_properties(${TARGET_UNITY_NAME} PROPERTIES VERSION ${PROJECT_VERSION})
-set_target_properties(${TARGET_UNITY_NAME} PROPERTIES SOVERSION ${PROJECT_VERSION})
+    target_include_directories(${TARGET_NAME} PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>
+    )
 
-target_compile_definitions(${TARGET_UNITY_NAME} PUBLIC -DUNITY_INCLUDE_CONFIG_H)
+    set_target_properties(${TARGET_NAME} PROPERTIES C_STANDARD 99)
+    set_target_properties(${TARGET_NAME} PROPERTIES VERSION ${PROJECT_VERSION})
+    set_target_properties(${TARGET_NAME} PROPERTIES SOVERSION ${PROJECT_VERSION})
+
+    target_compile_definitions(${TARGET_NAME} PUBLIC -DUNITY_INCLUDE_CONFIG_H)
+endforeach()
 
 list(APPEND HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src/unity.h
@@ -61,23 +76,35 @@ list(APPEND HEADER_FILES
 #-----------------------------------------------------------------------------
 # Target cmock
 #-----------------------------------------------------------------------------
-add_library(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/src/cmock.c)
+set(TARGET_CMOCK_NAMES ${PROJECT_NAME})
+set(TARGET_CMOCK_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/cmock.c)
 
-if(NOT TARGET unity::${PROJECT_NAME})
-    add_library(unity::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
-endif()
-
+add_library(${PROJECT_NAME} ${TARGET_CMOCK_SOURCES})
 
 target_link_libraries(${PROJECT_NAME} ${TARGET_UNITY_NAME})
 
-target_include_directories(${PROJECT_NAME} PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>
-)
+if(BUILD_SHARED_LIBS AND BUILD_STATIC_LIBS)
+     add_library(${PROJECT_NAME}_static STATIC ${TARGET_CMOCK_SOURCES})
+     target_link_libraries(${PROJECT_NAME}_static ${TARGET_UNITY_NAME}_static)
+     set_target_properties(${PROJECT_NAME}_static PROPERTIES
+          POSITION_INDEPENDENT_CODE FALSE)
+     list(APPEND TARGET_CMOCK_NAMES ${PROJECT_NAME}_static)
+endif()
 
-set_target_properties(${PROJECT_NAME} PROPERTIES C_STANDARD 99)
-set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${PROJECT_VERSION})
-set_target_properties(${PROJECT_NAME} PROPERTIES SOVERSION ${PROJECT_VERSION})
+foreach(TARGET_NAME ${TARGET_CMOCK_NAMES})
+    if(NOT TARGET unity::${TARGET_NAME})
+        add_library(unity::${TARGET_NAME} ALIAS ${TARGET_NAME})
+    endif()
+
+    target_include_directories(${TARGET_NAME} PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${TARGET_NAME}>
+    )
+
+    set_target_properties(${TARGET_NAME} PROPERTIES C_STANDARD 99)
+    set_target_properties(${TARGET_NAME} PROPERTIES VERSION ${PROJECT_VERSION})
+    set_target_properties(${TARGET_NAME} PROPERTIES SOVERSION ${PROJECT_VERSION})
+endforeach()
 
 list(APPEND HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cmock_internals.h
@@ -123,7 +150,7 @@ if(INSTALL_CMAKE_TOOLS)
 endif()
 
 # install targets
-install(TARGETS ${TARGET_UNITY_NAME} ${PROJECT_NAME}
+install(TARGETS ${TARGET_UNITY_NAMES} ${TARGET_CMOCK_NAMES}
         EXPORT ${TARGETS_EXPORT_NAME}
         LIBRARY DESTINATION ${CMOCK_INSTALL_DIR}
         ARCHIVE DESTINATION ${CMOCK_INSTALL_DIR}
