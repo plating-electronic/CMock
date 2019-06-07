@@ -49,8 +49,12 @@ function(find_header HEADER_FILE INCLUDE_DIRECTORIES_LIST)
 
         find_file(HEADER_FILE_FULL_PATH_LOC ${HEADER_FILE}
             PATHS ${INC_DIR_STRIPPED}
+            # only search in given paths
             NO_DEFAULT_PATH
-        )
+            # do not restrict search to CMAKE_FIND_ROOT_PATH
+            # otherwise a cross SDK cannot find files in host's source dirs
+            NO_CMAKE_FIND_ROOT_PATH
+            )
 
         string(COMPARE NOTEQUAL "HEADER_FILE_FULL_PATH_LOC-NOTFOUND" ${HEADER_FILE_FULL_PATH_LOC} HEADER_FOUND_LOC)
 
