@@ -106,7 +106,11 @@ function(cmock_create_mock)
         dbgmessage("    HEADER:     ${PARSED_ARGS_HEADER}")
     endif()
 
-    get_target_property(INCLUDE_DIRS_LIST ${PARSED_ARGS_DEPENDENCY} INCLUDE_DIRECTORIES)
+    if(TARGET ${PARSED_ARGS_DEPENDENCY} )
+        get_target_property(INCLUDE_DIRS_LIST ${PARSED_ARGS_DEPENDENCY} INCLUDE_DIRECTORIES)
+    else()
+        set(INCLUDE_DIRS_LIST ${CMAKE_CURRENT_SOURCE_DIR})
+    endif()
 
     # find the header file's full path
     find_header(${PARSED_ARGS_HEADER} ${INCLUDE_DIRS_LIST})
@@ -156,7 +160,8 @@ function(cmock_create_mock)
 
     set_property(TARGET ${MOCK_MODULE} PROPERTY C_STANDARD 99)
 
-    target_link_libraries (${MOCK_MODULE} ${PARSED_ARGS_DEPENDENCY}
+    target_link_libraries (${MOCK_MODULE} PUBLIC
+        $<TARGET_NAME_IF_EXISTS:${PARSED_ARGS_DEPENDENCY}>
         unity::unity
         unity::cmock
     )
