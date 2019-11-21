@@ -89,7 +89,7 @@ function(cmock_create_mock)
         "PARSED_ARGS"
         "VERBOSE"
         "DEPENDENCY;HEADER"
-        ""
+        "LIB_DEPS"
         ${ARGN}
     )
 
@@ -99,11 +99,17 @@ function(cmock_create_mock)
         message(FATAL_ERROR "You must provide a HEADER file")
     endif()
 
+    # prevent usage of LIB_DEPS argument when DEPENDENCY is a target
+    if(TARGET ${PARSED_ARGS_DEPENDENCY} AND PARSED_ARGS_LIB_DEPS)
+        message(FATAL_ERROR "Not allowed to define LIB_DEPS when DEPENDENCY is a target, dependencies will be handled by cmake ")
+    endif()
+
     if(PARSED_ARGS_VERBOSE)
         dbgmessage("cmock_create_mock call parameters:")
         dbgmessage("    VERBOSE:    ${PARSED_ARGS_VERBOSE}")
         dbgmessage("    DEPENDENCY: ${PARSED_ARGS_DEPENDENCY}")
         dbgmessage("    HEADER:     ${PARSED_ARGS_HEADER}")
+        dbgmessage("    LIB_DEPS:   ${PARSED_ARGS_LIB_DEPS}")
     endif()
 
     if(TARGET ${PARSED_ARGS_DEPENDENCY} )
@@ -162,6 +168,7 @@ function(cmock_create_mock)
 
     target_link_libraries (${MOCK_MODULE} PUBLIC
         $<TARGET_NAME_IF_EXISTS:${PARSED_ARGS_DEPENDENCY}>
+        ${PARSED_ARGS_LIB_DEPS}
         unity::unity
         unity::cmock
     )
