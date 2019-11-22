@@ -116,6 +116,10 @@ function(cmock_create_mock)
         get_target_property(INCLUDE_DIRS_LIST ${PARSED_ARGS_DEPENDENCY} INCLUDE_DIRECTORIES)
     else()
         set(INCLUDE_DIRS_LIST ${CMAKE_CURRENT_SOURCE_DIR})
+        foreach(LIB_DEP ${PARSED_ARGS_LIB_DEPS} )
+            get_target_property(DEPS_INCLUDE_DIR ${LIB_DEP} INCLUDE_DIRECTORIES)
+            list(APPEND DEPS_INCLUDE_DIRS_LIST ${DEPS_INCLUDE_DIR})
+        endforeach()
     endif()
 
     # find the header file's full path
@@ -144,7 +148,7 @@ function(cmock_create_mock)
     add_custom_command(OUTPUT
         ${MOCK_OBJECT_NAME}.c
         ${MOCK_OBJECT_NAME}.h
-        COMMAND ${C_PREPROCESSOR} -o ${HEADER_FILE_NAME_WE} ${CMOCK_HEADER_FILE_FULL_PATH}
+        COMMAND ${C_PREPROCESSOR} -o ${HEADER_FILE_NAME_WE} ${CMOCK_HEADER_FILE_FULL_PATH} $<$<BOOL:${DEPS_INCLUDE_DIRS_LIST}>:-I${DEPS_INCLUDE_DIRS_LIST}>
         COMMAND ${CMOCK_COMMAND} ${HEADER_FILE_NAME_WE}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "[CMOCK][${HEADER_FILE_NAME}] Generating mock ${NAMESPACELESS_DEPENDENCY}mock"
