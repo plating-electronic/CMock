@@ -7,6 +7,7 @@
 #
 # Authors:     Lars Moellendorf <lars.moellendorf@plating.de>
 #              Adrian Antonana <adrian.antonana@plating.de>
+#              Johannes Bruder <johannes.bruder@plating.de>
 # Description: CMock convenience functions
 #
 
@@ -21,7 +22,19 @@ else()
     message(FATAL_ERROR "CPP not found")
 endif()
 
-find_package(Ruby REQUIRED)
+find_package(Ruby 2.0)
+
+if(NOT RUBY_FOUND )
+    # Workaround for cross builds, can be replaced
+    # as soon components in FindRuby are available.
+    # Fallback to find program only which is enough.
+    find_program(RUBY_EXECUTABLE ruby)
+    if(RUBY_EXECUTABLE)
+        message(STATUS "Found Ruby binary: ${RUBY_EXECUTABLE}")
+    else()
+        message(FATAL_ERROR "Ruby binary not found")
+    endif()
+endif()
 
 set(CMOCK_CREATE_RUNNER_COMMAND
     UNITY_DIR=${@PROJECT_NAME@_INSTALL_DIR}/vendor/unity
