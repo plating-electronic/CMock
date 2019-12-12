@@ -36,11 +36,6 @@ if(NOT RUBY_FOUND )
     endif()
 endif()
 
-set(CMOCK_CREATE_RUNNER_COMMAND
-    UNITY_DIR=${@PROJECT_NAME@_INSTALL_DIR}/vendor/unity
-    ${RUBY_EXECUTABLE} ${@PROJECT_NAME@_INSTALL_DIR}/scripts/create_runner.rb
-)
-
 #-----------------------------------------------------------------------------
 # helper functions
 #-----------------------------------------------------------------------------
@@ -205,7 +200,7 @@ function(cmock_create_runner)
         "PARSED_ARGS"
         "VERBOSE"
         "TARGET;SOURCE"
-        "LIB_DEPS"
+        "LIB_DEPS;OPTIONS"
         ${ARGN}
     )
 
@@ -221,6 +216,7 @@ function(cmock_create_runner)
         dbgmessage("    TARGET:   ${PARSED_ARGS_TARGET}")
         dbgmessage("    SOURCE:   ${PARSED_ARGS_SOURCE}")
         dbgmessage("    LIB_DEPS: ${PARSED_ARGS_LIB_DEPS}")
+        dbgmessage("    OPTIONS:  ${PARSED_ARGS_OPTIONS}")
     endif()
 
     get_filename_component(TEST_SOURCE_FILE_NAME_WE ${PARSED_ARGS_SOURCE} NAME_WE)
@@ -230,9 +226,13 @@ function(cmock_create_runner)
         ${TEST_SOURCE_FILE_NAME_WE}_runner.c
     )
 
+    set(CMOCK_CREATE_RUNNER_COMMAND
+        ${RUBY_EXECUTABLE} ${@PROJECT_NAME@_INSTALL_DIR}/vendor/unity/auto/generate_test_runner.rb
+    )
+
     add_custom_command(
         OUTPUT  ${GENERATED_RUNNER_FILE}
-        COMMAND ${CMOCK_CREATE_RUNNER_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/${PARSED_ARGS_SOURCE} ${GENERATED_RUNNER_FILE}
+        COMMAND ${CMOCK_CREATE_RUNNER_COMMAND} ${PARSED_ARGS_OPTIONS} ${CMAKE_CURRENT_SOURCE_DIR}/${PARSED_ARGS_SOURCE} ${GENERATED_RUNNER_FILE}
         DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${PARSED_ARGS_SOURCE}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         BYPRODUCTS ${GENERATED_RUNNER_FILE}
@@ -253,7 +253,7 @@ function(cmock_create_runner)
     if(PARSED_ARGS_VERBOSE)
         dbgmessage("cmock_create_runner command:")
         dbgmessage("    OUTPUT : ${GENERATED_RUNNER_FILE}")
-        dbgmessage("    COMMAND : ${CMOCK_CREATE_RUNNER_COMMAND} ${CMAKE_CURRENT_SOURCE_DIR}/${PARSED_ARGS_SOURCE} ${GENERATED_RUNNER_FILE}")
+        dbgmessage("    COMMAND : ${CMOCK_CREATE_RUNNER_COMMAND} ${PARSED_ARGS_OPTIONS} ${CMAKE_CURRENT_SOURCE_DIR}/${PARSED_ARGS_SOURCE} ${GENERATED_RUNNER_FILE}")
         dbgmessage("    WORKING_DIRECTORY : ${CMAKE_CURRENT_BINARY_DIR}")
         dbgmessage("    BYPRODUCTS : ${GENERATED_RUNNER_FILE}:")
     endif()
