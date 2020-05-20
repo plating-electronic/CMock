@@ -17,7 +17,7 @@ option(INSTALL_CMAKE_TOOLS "Install CMock CMake functions" ON)
 # For packaging by tools like bitbake, shared and static libs should be build
 # at once
 CMAKE_DEPENDENT_OPTION(BUILD_STATIC_LIBS "Build static libs" OFF
-	"BUILD_SHARED_LIBS" OFF)
+                      "BUILD_SHARED_LIBS" OFF)
 
 
 #-----------------------------------------------------------------------------
@@ -57,7 +57,7 @@ foreach(TARGET_NAME ${TARGET_UNITY_NAMES})
 
     target_include_directories(${TARGET_NAME} PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/unity/src>
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/vendor/unity/src>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/vendor/unity/src>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>
     )
 
@@ -99,7 +99,7 @@ foreach(TARGET_NAME ${TARGET_CMOCK_NAMES})
 
     target_include_directories(${TARGET_NAME} PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${TARGET_NAME}>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${TARGET_NAME}>
     )
 
     set_target_properties(${TARGET_NAME} PROPERTIES C_STANDARD 99)
@@ -144,10 +144,10 @@ configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/build-tree-${PRO
 )
 
 if(INSTALL_CMAKE_TOOLS)
-	# configure cmock tools module
-	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${CMOCK_TOOLS_FILE}.in ${CMOCK_TOOLS_FILE}
-	  @ONLY
-	)
+    # configure cmock tools module
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/${CMOCK_TOOLS_FILE}.in ${CMOCK_TOOLS_FILE}
+    @ONLY
+    )
 endif()
 
 # install targets
@@ -207,10 +207,10 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/install-${PROJECT_CONFIG_FILE}
 )
 
 if(INSTALL_CMAKE_TOOLS)
-	# install tools module
-	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${CMOCK_TOOLS_FILE}
-	        DESTINATION ${CONFIG_INSTALL_DIR}
-	)
+    # install tools module
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${CMOCK_TOOLS_FILE}
+            DESTINATION ${CONFIG_INSTALL_DIR}
+    )
 endif()
 
 # add to CMake registry
