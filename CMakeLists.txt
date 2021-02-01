@@ -14,6 +14,7 @@ include(CMakeDependentOption)
 #-----------------------------------------------------------------------------
 # When cross compiling CMake tools are only needed on the host
 option(INSTALL_CMAKE_TOOLS "Install CMock CMake functions" ON)
+option(SUPPORT_64BIT "Force 64-bit support" OFF)
 # For packaging by tools like bitbake, shared and static libs should be build
 # at once
 CMAKE_DEPENDENT_OPTION(BUILD_STATIC_LIBS "Build static libs" OFF
@@ -35,6 +36,9 @@ set(TARGET_UNITY_NAMES ${TARGET_UNITY_NAME})
 set(UNITY_FLOAT UNITY_INCLUDE_FLOAT)
 set(UNITY_DOUBLE UNITY_INCLUDE_DOUBLE)
 set(UNITY_EXCLUDE_FLOAT_PRINT UNITY_INCLUDE_FLOAT_PRINT)
+if(SUPPORT_64BIT)
+    set(UNITY_SUPPORT_64 "#define UNITY_SUPPORT_64")
+endif()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/unity_config.h.in
     ${CMAKE_CURRENT_BINARY_DIR}/vendor/unity/src/unity_config.h @ONLY

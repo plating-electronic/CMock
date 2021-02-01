@@ -103,6 +103,8 @@
  * on small targets, so don't define it if you don't need it.
  */
 /* #define UNITY_INCLUDE_64 */
+/* it is UNITY_SUPPORT_64 *not* UNITY_INCLUDE_64 */
+@UNITY_SUPPORT_64@
 
 
 /* *************************** FLOATING POINT TYPES ****************************
