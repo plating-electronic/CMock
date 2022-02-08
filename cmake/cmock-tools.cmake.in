@@ -96,7 +96,7 @@ function(cmock_create_mock)
     cmake_parse_arguments(
         "PARSED_ARGS"
         "VERBOSE"
-        "DEPENDENCY;HEADER"
+        "DEPENDENCY;HEADER;IF_DEPS"
         "LIB_DEPS"
         ${ARGN}
     )
@@ -130,6 +130,12 @@ function(cmock_create_mock)
         endforeach()
     endif()
 
+    if(PARSED_ARGS_IF_DEPS)
+        get_target_property(IF_INCLUDE_DIRS_LIST ${PARSED_ARGS_IF_DEPS} INTERFACE_INCLUDE_DIRECTORIES)
+    endif()
+
+    list(APPEND INCLUDE_DIRS_LIST ${IF_INCLUDE_DIRS_LIST})
+    list(APPEND DEPS_INCLUDE_DIRS_LIST ${IF_INCLUDE_DIRS_LIST})
     # find the header file's full path
     find_header(${PARSED_ARGS_HEADER} ${INCLUDE_DIRS_LIST})
 
@@ -181,6 +187,7 @@ function(cmock_create_mock)
     target_link_libraries (${MOCK_MODULE} PUBLIC
         $<TARGET_NAME_IF_EXISTS:${PARSED_ARGS_DEPENDENCY}>
         ${PARSED_ARGS_LIB_DEPS}
+        ${PARSED_ARGS_IF_DEPS}
         unity::unity
         unity::cmock
     )
