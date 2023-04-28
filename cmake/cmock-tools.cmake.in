@@ -93,11 +93,12 @@ endfunction()
 #-----------------------------------------------------------------------------
 function(cmock_create_mock)
 
+    set(options VERBOSE)
+    set(oneValueArgs DEPENDENCY HEADER)
+    set(multiValueArgs IF_DEPS LIB_DEPS)
     cmake_parse_arguments(
         "PARSED_ARGS"
-        "VERBOSE"
-        "DEPENDENCY;HEADER;IF_DEPS"
-        "LIB_DEPS"
+        "${options}" "${oneValueArgs}" "${multiValueArgs}"
         ${ARGN}
     )
 
@@ -126,15 +127,16 @@ function(cmock_create_mock)
         set(INCLUDE_DIRS_LIST ${CMAKE_CURRENT_SOURCE_DIR})
         foreach(LIB_DEP ${PARSED_ARGS_LIB_DEPS} )
             get_target_property(DEPS_INCLUDE_DIR ${LIB_DEP} INCLUDE_DIRECTORIES)
-            list(APPEND DEPS_INCLUDE_DIRS_LIST ${DEPS_INCLUDE_DIR})
+            list(APPEND DEPS_INCLUDE_DIRS_LIST "-I${DEPS_INCLUDE_DIR}")
         endforeach()
     endif()
 
-    if(PARSED_ARGS_IF_DEPS)
-        get_target_property(IF_INCLUDE_DIRS_LIST ${PARSED_ARGS_IF_DEPS} INTERFACE_INCLUDE_DIRECTORIES)
-    endif()
+    # At interface dependencies
+    foreach(IF_DEP ${PARSED_ARGS_IF_DEPS} )
+        get_target_property(IF_INCLUDE_DIR ${IF_DEP} INTERFACE_INCLUDE_DIRECTORIES)
+        list(APPEND DEPS_INCLUDE_DIRS_LIST "-I${IF_INCLUDE_DIR}")
+    endforeach()
 
-    list(APPEND DEPS_INCLUDE_DIRS_LIST ${IF_INCLUDE_DIRS_LIST})
     # find the header file's full path
     find_header(${PARSED_ARGS_HEADER} ${INCLUDE_DIRS_LIST})
 
@@ -153,6 +155,12 @@ function(cmock_create_mock)
     get_filename_component(HEADER_FILE_NAME ${CMOCK_HEADER_FILE_FULL_PATH} NAME)
     set(MOCK_OBJECT_NAME ${MOCK_DIR}/mock_${HEADER_FILE_NAME_WE})
 
+    # Define arguments for cpp command
+    set(ARGUMENTS ${CMOCK_HEADER_FILE_FULL_PATH} -o ${HEADER_FILE_NAME_WE})
+    # Add include directories and make sure that arguments are not quoted
+    # See https://cmake.cmake.narkive.com/tAW00LXz/passing-multiple-arguments-to-add-custom-command
+    list(APPEND ARGUMENTS ${DEPS_INCLUDE_DIRS_LIST})
+
     set(CMOCK_COMMAND
         ${RUBY_EXECUTABLE} ${@PROJECT_NAME@_INSTALL_DIR}/lib/cmock.rb
         -o${CMAKE_CURRENT_SOURCE_DIR}/cmock-config.yml
@@ -161,7 +169,7 @@ function(cmock_create_mock)
     add_custom_command(OUTPUT
         ${MOCK_OBJECT_NAME}.c
         ${MOCK_OBJECT_NAME}.h
-        COMMAND ${C_PREPROCESSOR} -o ${HEADER_FILE_NAME_WE} ${CMOCK_HEADER_FILE_FULL_PATH} $<$<BOOL:${DEPS_INCLUDE_DIRS_LIST}>:-I${DEPS_INCLUDE_DIRS_LIST}>
+        COMMAND ${C_PREPROCESSOR} ${ARGUMENTS}
         COMMAND ${CMOCK_COMMAND} ${HEADER_FILE_NAME_WE}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "[CMOCK][${HEADER_FILE_NAME}] Generating mock ${NAMESPACELESS_DEPENDENCY}mock"
@@ -171,7 +179,7 @@ function(cmock_create_mock)
 
     if(PARSED_ARGS_VERBOSE)
         dbgmessage("${MOCK_MODULE} will be generated using: \n${CMOCK_COMMAND} ${PP_HEADER_FILE}\nits files are: \n${MOCK_OBJECT_NAME}.c/h")
-        dbgmessage("mock command 1: ${C_PREPROCESSOR} -o ${HEADER_FILE_NAME_WE} ${CMOCK_HEADER_FILE_FULL_PATH}")
+        dbgmessage("mock command 1: ${C_PREPROCESSOR} ${ARGUMENTS}")
         dbgmessage("mock command 2: ${CMOCK_COMMAND} ${HEADER_FILE_NAME_WE}")
         dbgmessage("cmock command CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
         dbgmessage("cmock command CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
