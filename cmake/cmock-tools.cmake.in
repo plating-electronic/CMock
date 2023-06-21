@@ -14,7 +14,17 @@
 #-----------------------------------------------------------------------------
 # Find dependencies
 #-----------------------------------------------------------------------------
-find_program(C_PREPROCESSOR cpp)
+
+if(DEFINED ENV{CPP})
+    set(C_PREPROCESSOR "${CMAKE_C_COMPILER}")
+    # Define arguments for cpp command
+    string(REPLACE "  " " " ARGUMENTS "$ENV{CPP}")
+    string(REPLACE " " ";" ARGUMENTS "${ARGUMENTS}")
+    list(POP_FRONT ARGUMENTS)
+    message(DEBUG "CPP ARGUMENTS: ${ARGUMENTS}")
+else()
+    find_program(C_PREPROCESSOR cpp PATH ${CMAKE_SYSROOT})
+endif()
 
 if(C_PREPROCESSOR)
     message(STATUS "Found CPP: ${C_PREPROCESSOR}")
@@ -168,7 +178,7 @@ function(cmock_create_mock)
     set(MOCK_OBJECT_NAME ${MOCK_DIR}/mock_${HEADER_FILE_NAME_WE})
 
     # Define arguments for cpp command
-    set(ARGUMENTS ${CMOCK_HEADER_FILE_FULL_PATH} -o ${HEADER_FILE_NAME_WE})
+    list(APPEND ARGUMENTS ${CMOCK_HEADER_FILE_FULL_PATH} -o ${HEADER_FILE_NAME_WE})
     # Add include directories and make sure that arguments are not quoted
     # See https://cmake.cmake.narkive.com/tAW00LXz/passing-multiple-arguments-to-add-custom-command
     list(APPEND ARGUMENTS ${DEPS_INCLUDE_DIRS_LIST})
