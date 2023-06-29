@@ -18,10 +18,15 @@
 if(DEFINED ENV{CPP})
     set(C_PREPROCESSOR "${CMAKE_C_COMPILER}")
     # Define arguments for cpp command
-    string(REPLACE "  " " " ARGUMENTS "$ENV{CPP}")
-    string(REPLACE " " ";" ARGUMENTS "${ARGUMENTS}")
-    list(POP_FRONT ARGUMENTS)
-    message(DEBUG "CPP ARGUMENTS: ${ARGUMENTS}")
+    string(REPLACE " " ";" CPP_FLAGS "${CMAKE_C_FLAGS}")
+    list(POP_FRONT CPP_FLAGS)
+    message(DEBUG "CPP_FLAGS: ${CPP_FLAGS}")
+    string(REPLACE "  " " " ENV_C_FLAGS "$ENV{CPP}")
+    string(REPLACE " " ";" ENV_C_FLAGS "${ENV_C_FLAGS}")
+    list(POP_FRONT ENV_C_FLAGS)
+    message(DEBUG "ENV CPP FLAGS: ${ENV_C_FLAGS}")
+    list(APPEND CPP_FLAGS ${ENV_C_FLAGS})
+    message(DEBUG "CPP FLAGS: ${CPP_FLAGS}")
 else()
     find_program(C_PREPROCESSOR cpp PATH ${CMAKE_SYSROOT})
 endif()
@@ -178,13 +183,13 @@ function(cmock_create_mock)
     set(MOCK_OBJECT_NAME ${MOCK_DIR}/mock_${HEADER_FILE_NAME_WE})
 
     # Define arguments for cpp command
-    list(APPEND ARGUMENTS ${CMOCK_HEADER_FILE_FULL_PATH} -o ${HEADER_FILE_NAME_WE})
+    list(APPEND CPP_FLAGS ${CMOCK_HEADER_FILE_FULL_PATH} -o ${HEADER_FILE_NAME_WE})
     # Add include directories and make sure that arguments are not quoted
     # See https://cmake.cmake.narkive.com/tAW00LXz/passing-multiple-arguments-to-add-custom-command
-    list(APPEND ARGUMENTS ${DEPS_INCLUDE_DIRS_LIST})
+    list(APPEND CPP_FLAGS ${DEPS_INCLUDE_DIRS_LIST})
     if(PARSED_ARGS_VERBOSE)
         dbgmessage("    DEPS_INCLUDE_DIRS_LIST:   ${DEPS_INCLUDE_DIRS_LIST}")
-        dbgmessage("    ARGUMENTS:   ${ARGUMENTS}")
+        dbgmessage("    CPP_FLAGS:   ${CPP_FLAGS}")
     endif()
 
     set(CMOCK_COMMAND
@@ -195,7 +200,7 @@ function(cmock_create_mock)
     add_custom_command(OUTPUT
         ${MOCK_OBJECT_NAME}.c
         ${MOCK_OBJECT_NAME}.h
-        COMMAND ${C_PREPROCESSOR} ${ARGUMENTS}
+        COMMAND ${C_PREPROCESSOR} ${CPP_FLAGS}
         COMMAND ${CMOCK_COMMAND} ${HEADER_FILE_NAME_WE}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "[CMOCK][${HEADER_FILE_NAME}] Generating mock ${NAMESPACELESS_DEPENDENCY}mock"
@@ -205,7 +210,7 @@ function(cmock_create_mock)
 
     if(PARSED_ARGS_VERBOSE)
         dbgmessage("${MOCK_MODULE} will be generated using: \n${CMOCK_COMMAND} ${PP_HEADER_FILE}\nits files are: \n${MOCK_OBJECT_NAME}.c/h")
-        dbgmessage("mock command 1: ${C_PREPROCESSOR} ${ARGUMENTS}")
+        dbgmessage("mock command 1: ${C_PREPROCESSOR} ${CPP_FLAGS}")
         dbgmessage("mock command 2: ${CMOCK_COMMAND} ${HEADER_FILE_NAME_WE}")
         dbgmessage("cmock command CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
         dbgmessage("cmock command CMAKE_CURRENT_BINARY_DIR: ${CMAKE_CURRENT_BINARY_DIR}")
