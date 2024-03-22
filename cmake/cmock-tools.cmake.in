@@ -267,7 +267,7 @@ function(cmock_create_runner)
     get_filename_component(TEST_SOURCE_FILE_NAME ${PARSED_ARGS_SOURCE} NAME)
 
     set(GENERATED_RUNNER_FILE
-        ${TEST_SOURCE_FILE_NAME_WE}_runner.c
+        ${PARSED_ARGS_TARGET}_runner.c
     )
 
     set(CMOCK_CREATE_RUNNER_COMMAND
