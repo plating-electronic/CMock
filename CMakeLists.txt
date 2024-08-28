@@ -69,7 +69,9 @@ foreach(TARGET_NAME ${TARGET_UNITY_NAMES})
     set_target_properties(${TARGET_NAME} PROPERTIES VERSION ${PROJECT_VERSION})
     set_target_properties(${TARGET_NAME} PROPERTIES SOVERSION ${PROJECT_VERSION})
 
-    target_compile_definitions(${TARGET_NAME} PUBLIC -DUNITY_INCLUDE_CONFIG_H)
+    target_compile_definitions(${TARGET_NAME} PUBLIC
+        UNITY_INCLUDE_CONFIG_H
+        UNITY_USE_COMMAND_LINE_ARGS)
 endforeach()
 
 list(APPEND HEADER_FILES
